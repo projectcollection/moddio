@@ -1,4 +1,4 @@
-export { getRandomInt, convertAngle, getVecComponents };
+export { getRandomInt, convertAngle, getVecComponents, getAngle, getQuadrant };
 
 const getRandomInt = (min, max) => {
   min = Math.ceil(min);
@@ -12,7 +12,7 @@ const convertAngle = (degree) => {
 };
 
 //get components of vector given a normal degree angle
-let getVecComponents = (angle) => {
+const getVecComponents = (angle) => {
   //ref: https://stackoverflow.com/a/23579015/9377904
   let radian = (angle * Math.PI) / 180;
 
@@ -25,7 +25,19 @@ let getVecComponents = (angle) => {
   return { x, y };
 };
 
-let getAngle = (x, y) => {
-  console.log(x, y);
-  return Math.atan(x / y);
+const getAngle = (x, y) => {
+  let radian = Math.abs(Math.atan((y * -1) / x));
+  return radian * (180 / Math.PI);
+};
+
+const getQuadrant = (x, y) => {
+  if (x > 0 && y > 0) {
+    return 1;
+  } else if (x < 0 && y > 0) {
+    return 2;
+  } else if (x < 0 && y < 0) {
+    return 3;
+  } else {
+    return 4;
+  }
 };
