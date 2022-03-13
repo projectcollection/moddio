@@ -4,6 +4,7 @@ import {
   getVecComponents,
   getAngle,
   getQuadrant,
+  distance,
 } from "./helpers.js";
 
 const app = new PIXI.Application({
@@ -23,8 +24,9 @@ const Character = class {
     4: (a) => convertAngle(a),
   };
 
-  constructor(stage, speed, textures) {
-    this.stage = stage;
+  constructor(id, app, speed, textures) {
+    this.id = id;
+    this.app = app;
     this.speed = speed;
     this.container = new PIXI.Container();
     this.texture = PIXI.Texture.from(
@@ -60,40 +62,61 @@ const Character = class {
       convertAngle(container.angle)
     ));
 
-    this.stage.addChild(container);
+    this.app.stage.addChild(container);
     Character.population.push(this);
   }
 
   move() {
+    let app = this.app;
     let container = this.container;
     let speed = this.speed;
-    let x = this._x;
-    let y = this._y;
-    let quadrants = Character.quadrants;
 
     if (container.x < 0 || container.x > app.view.width) {
-      x = -x;
-      let reflectAngle = getAngle(x * speed, y * speed);
-      container.angle =
-        y == 0
-          ? container.angle + 180
-          : quadrants[getQuadrant(x, y)](reflectAngle);
+      this._x = -this._x;
+      this.rotate();
     } else if (container.y < 0 || container.y > app.view.height) {
-      y = -y;
-      let reflectAngle = getAngle(x * speed, y * speed);
-      container.angle =
-        x == 0
-          ? container.angle + 180
-          : quadrants[getQuadrant(x, y)](reflectAngle);
+      this._y = -this._y;
+      this.rotate();
     }
 
-    container.position.set(container.x + speed * x, container.y + speed * y);
+    container.position.set(
+      container.x + speed * this._x,
+      container.y + speed * this._y
+    );
 
-    this._x = x;
-    this._y = y;
+    this.collision();
   }
 
-  collission() {}
+  rotate() {
+    let speed = this.speed;
+    let _x = this._x;
+    let _y = this._y;
+    let quadrants = Character.quadrants;
+    let reflectAngle = getAngle(_x * speed, _y * speed);
+    if (_x == 0 || _y == 0) {
+      this.container.angle += 180;
+    } else {
+      this.container.angle = quadrants[getQuadrant(_x, _y)](reflectAngle);
+    }
+  }
+
+  collision() {
+    let otherChars = Character.population.filter((char) => char.id != this.id);
+
+    otherChars.forEach((char) => {
+      if (distance(this.container, char.container) < 20) {
+        let tint = getRandomInt(5, 20);
+        char.container.children[0].tint = tint;
+        this.container.children[0].tint = tint;
+
+        this._x *= -1;
+        this._y *= -1;
+        char._x *= -1;
+        char._y *= -1;
+        //debugger;
+      }
+    });
+  }
 };
 
 const bg_container = new PIXI.Container();
@@ -101,7 +124,7 @@ app.stage.addChild(bg_container);
 
 // ENVIRONMENT consts
 // -----------------------------------------------------------------------------
-const CHARACTERS = 6;
+const CHARACTERS = 10;
 const MIN_SPEED = 3;
 const MAX_SPEED = 20;
 
@@ -121,9 +144,10 @@ bg_sprite.width = app.screen.width;
 bg_sprite.height = app.screen.height;
 bg_container.addChild(bg_sprite);
 
-let chars = [...Array(CHARACTERS)].map(() => {
+let chars = [...Array(CHARACTERS)].map((_, idx) => {
   return new Character(
-    app.stage,
+    idx,
+    app,
     getRandomInt(MIN_SPEED, MAX_SPEED),
     CHAR_TEXTURES
   );
@@ -133,7 +157,6 @@ let chars = [...Array(CHARACTERS)].map(() => {
 app.ticker.add((delta) => {
   chars.forEach((char) => {
     char.move();
-    char.collission();
   });
 });
 

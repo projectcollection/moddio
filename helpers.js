@@ -1,4 +1,11 @@
-export { getRandomInt, convertAngle, getVecComponents, getAngle, getQuadrant };
+export {
+  getRandomInt,
+  convertAngle,
+  getVecComponents,
+  getAngle,
+  getQuadrant,
+  distance,
+};
 
 const getRandomInt = (min, max) => {
   min = Math.ceil(min);
@@ -40,4 +47,8 @@ const getQuadrant = (x, y) => {
   } else {
     return 4;
   }
+};
+
+const distance = (a, b) => {
+  return Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
 };
