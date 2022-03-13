@@ -14,75 +14,139 @@ const app = new PIXI.Application({
 });
 document.body.appendChild(app.view);
 
-const container = new PIXI.Container();
-const bg_container = new PIXI.Container();
+const Character = class {
+  static population = [];
+  static quadrants = {
+    1: (a) => convertAngle(-a),
+    2: (a) => convertAngle(270 - convertAngle(a)),
+    3: (a) => convertAngle(180 - a),
+    4: (a) => convertAngle(a),
+  };
 
+  constructor(stage, speed, textures) {
+    this.stage = stage;
+    this.speed = speed;
+    this.container = new PIXI.Container();
+    this.texture = PIXI.Texture.from(
+      textures[getRandomInt(0, textures.length)]
+    );
+
+    //x and y vector component
+    this._x = 0;
+    this._y = 0;
+
+    this.initialize();
+  }
+
+  initialize() {
+    let container = this.container;
+    let charSprite = new PIXI.Sprite(this.texture);
+
+    charSprite.anchor.set(0.5, 0.5);
+    container.addChild(charSprite);
+    //this is more useful than view.width/height because it handles resolution
+    container.position.set(
+      getRandomInt(0, app.screen.width),
+      getRandomInt(0, app.screen.height)
+    );
+
+    // Center prite in local container coordinates
+    container.pivot.x = container.width / 2;
+    container.pivot.y = container.height / 2;
+    container.angle = convertAngle(getRandomInt(0, 360));
+
+    //set vector components from initial angle
+    ({ x: this._x, y: this._y } = getVecComponents(
+      convertAngle(container.angle)
+    ));
+
+    this.stage.addChild(container);
+    Character.population.push(this);
+  }
+
+  move() {
+    let container = this.container;
+    let speed = this.speed;
+    let x = this._x;
+    let y = this._y;
+    let quadrants = Character.quadrants;
+
+    if (container.x < 0 || container.x > app.view.width) {
+      x = -x;
+      let reflectAngle = getAngle(x * speed, y * speed);
+      container.angle =
+        y == 0
+          ? container.angle + 180
+          : quadrants[getQuadrant(x, y)](reflectAngle);
+    } else if (container.y < 0 || container.y > app.view.height) {
+      y = -y;
+      let reflectAngle = getAngle(x * speed, y * speed);
+      container.angle =
+        x == 0
+          ? container.angle + 180
+          : quadrants[getQuadrant(x, y)](reflectAngle);
+    }
+
+    container.position.set(container.x + speed * x, container.y + speed * y);
+
+    this._x = x;
+    this._y = y;
+  }
+
+  collission() {}
+};
+
+const bg_container = new PIXI.Container();
 app.stage.addChild(bg_container);
-app.stage.addChild(container);
+
+// ENVIRONMENT consts
+// -----------------------------------------------------------------------------
+const CHARACTERS = 6;
+const MIN_SPEED = 3;
+const MAX_SPEED = 20;
+
+const BG_TEXTURE = PIXI.Texture.from("./imgs/bg.png");
+const CHAR_TEXTURES = [
+  "./imgs/manOld_stand.png",
+  "./imgs/manBlue_stand.png",
+  "./imgs/soldier1_reload.png",
+  "./imgs/hitman1_silencer.png",
+  "./imgs/survivor1_reload.png",
+  "./imgs/zoimbie1_hold.png",
+];
 
 // Create a new texture
-const texture = PIXI.Texture.from("imgs/manBlue_stand.png");
-const bg = PIXI.Texture.from("imgs/bg.png");
-
-const bg_sprite = new PIXI.Sprite(bg);
+const bg_sprite = new PIXI.Sprite(BG_TEXTURE);
 bg_sprite.width = app.screen.width;
 bg_sprite.height = app.screen.height;
 bg_container.addChild(bg_sprite);
 
-const bunny = new PIXI.Sprite(texture);
-bunny.anchor.set(0.5, 0.5);
-container.addChild(bunny);
-
-// Move container to the center
-container.position.set(app.screen.width / 2, app.screen.height / 2);
-
-// Center bunny sprite in local container coordinates
-container.pivot.x = container.width / 2;
-container.pivot.y = container.height / 2;
-
-container.angle = convertAngle(240);
-let speed = 10;
-
-let quadrants = {
-  1: (a) => convertAngle(-a),
-  2: (a) => convertAngle(270 - convertAngle(a)),
-  3: (a) => convertAngle(180 - a),
-  4: (a) => convertAngle(a),
-};
-
-let { x, y } = getVecComponents(convertAngle(container.angle));
-// Listen for animate update
-app.ticker.add((delta) => {
-  if (container.x < 0 || container.x > app.view.width) {
-    x = -x;
-    let reflectAngle = getAngle(x * speed, y * speed);
-    container.angle = quadrants[getQuadrant(x, y)](reflectAngle);
-  } else if (container.y < 0 || container.y > app.view.height) {
-    y = -y;
-    let reflectAngle = getAngle(x * speed, y * speed);
-    container.angle = quadrants[getQuadrant(x, y)](reflectAngle);
-  }
-
-  // Listen for animate update
-  container.position.set(container.x + speed * x, container.y + speed * y);
+let chars = [...Array(CHARACTERS)].map(() => {
+  return new Character(
+    app.stage,
+    getRandomInt(MIN_SPEED, MAX_SPEED),
+    CHAR_TEXTURES
+  );
 });
 
-window.addEventListener("resize", resize);
-// Resize function window
-function resize() {
+// loop
+app.ticker.add((delta) => {
+  chars.forEach((char) => {
+    char.move();
+    char.collission();
+  });
+});
+
+// Resize window
+const resize = () => {
   app.renderer.resize(window.innerWidth, window.innerHeight);
-
-  // You can use the 'screen' property as the renderer visible
-  // area, this is more useful than view.width/height because
-  // it handles resolution
-  //container.position.set(app.screen.width / 2, app.screen.height / 2);
   bg_container.position.set(0, 0);
-
   if (bg_sprite.width < app.screen.width) {
     bg_sprite.width = app.screen.width;
   }
   if (bg_sprite.height < app.screen.height) {
     bg_sprite.height = app.screen.height;
   }
-}
+};
 resize();
+window.addEventListener("resize", resize);
